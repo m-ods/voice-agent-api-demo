@@ -68,7 +68,7 @@ export class VoiceAgent {
 
   constructor(private events: VoiceAgentEvents) {}
 
-  async start(tokenUrl: string) {
+  async start(tokenUrl: string, voice: string = "dawn") {
     this.events.onStatus("requesting token...");
     const tokenResp = await fetch(tokenUrl);
     if (!tokenResp.ok) {
@@ -116,7 +116,7 @@ export class VoiceAgent {
           session: {
             system_prompt: SYSTEM_PROMPT,
             greeting: GREETING,
-            output: { voice: "dawn" },
+            output: { voice },
             tools: TOOLS,
           },
         }),
