@@ -2,10 +2,11 @@ import { SYSTEM_PROMPT, GREETING } from "./prompt";
 
 const SAMPLE_RATE = 24000;
 const WS_URL = "wss://agents.assemblyai.com/v1/voice";
+const API_BASE = import.meta.env.VITE_BACKEND_URL || "";
 
 type TranscriptItem = {
   id: string;
-  role: "user" | "agent";
+  role: "user" | "agent" | "tool";
   text: string;
   partial?: boolean;
 };
@@ -15,6 +16,28 @@ export type VoiceAgentEvents = {
   onTranscript: (items: TranscriptItem[]) => void;
   onError: (message: string) => void;
 };
+
+const TOOLS = [
+  {
+    type: "function",
+    name: "search_web",
+    description:
+      "Search the web for facts, statistics, sources, or recent news that could back up a claim the user just made. Use sparingly — only when the user names a specific number, study, public figure, company, or event that would benefit from a citation. Do not search for vague topics or general opinions.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description:
+            "Specific search query — include keywords, names, and numbers. Example: 'percentage of remote workers in tech 2025' rather than 'remote work'.",
+        },
+      },
+      required: ["query"],
+    },
+  },
+];
+
+type PendingTool = { call_id: string; result: string };
 
 const b64encode = (buf: ArrayBuffer) => {
   const bytes = new Uint8Array(buf);
@@ -41,6 +64,7 @@ export class VoiceAgent {
   private sessionReady = false;
   private transcript: TranscriptItem[] = [];
   private partialUserId: string | null = null;
+  private pendingTools: Promise<PendingTool>[] = [];
 
   constructor(private events: VoiceAgentEvents) {}
 
@@ -93,6 +117,7 @@ export class VoiceAgent {
             system_prompt: SYSTEM_PROMPT,
             greeting: GREETING,
             output: { voice: "dawn" },
+            tools: TOOLS,
           },
         }),
       );
@@ -174,14 +199,75 @@ export class VoiceAgent {
         this.events.onTranscript([...this.transcript]);
         break;
 
+      case "tool.call":
+        this.pendingTools.push(this.runTool(msg));
+        break;
+
       case "reply.done":
-        if (msg.status === "interrupted") this.stopPlayback();
+        if (msg.status === "interrupted") {
+          this.pendingTools = [];
+          this.stopPlayback();
+        } else if (this.pendingTools.length > 0) {
+          this.flushTools();
+        }
         break;
 
       case "session.error":
       case "error":
         this.events.onError(msg.message || "session error");
         break;
+    }
+  }
+
+  private async runTool(msg: any): Promise<PendingTool> {
+    const callId: string = msg.call_id || "";
+    const name: string = msg.name || "";
+    const args = msg.args || {};
+
+    const item: TranscriptItem = {
+      id: `tool-${callId || Date.now()}`,
+      role: "tool",
+      text: name === "search_web" ? `Searching: "${args.query ?? ""}"` : `Calling ${name}…`,
+      partial: true,
+    };
+    this.transcript.push(item);
+    this.events.onTranscript([...this.transcript]);
+
+    let resultJson: string;
+    try {
+      if (name !== "search_web") throw new Error(`unknown tool: ${name}`);
+      const resp = await fetch(`${API_BASE}/api/tool/search_web`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: args.query ?? "" }),
+      });
+      if (!resp.ok) throw new Error(`tool ${resp.status}: ${await resp.text()}`);
+      const data = await resp.json();
+      resultJson = JSON.stringify(data);
+
+      const top = (data.results || [])[0];
+      item.partial = false;
+      item.text = top
+        ? `Searched: "${args.query}" → ${top.title || top.source || "result"}`
+        : `Searched: "${args.query}" → no results`;
+    } catch (err: any) {
+      resultJson = JSON.stringify({ error: String(err?.message ?? err) });
+      item.partial = false;
+      item.text = `Search failed: ${err?.message ?? err}`;
+    }
+    this.events.onTranscript([...this.transcript]);
+    return { call_id: callId, result: resultJson };
+  }
+
+  private async flushTools() {
+    const pending = this.pendingTools;
+    this.pendingTools = [];
+    const results = await Promise.all(pending);
+    if (this.ws?.readyState !== WebSocket.OPEN) return;
+    for (const r of results) {
+      this.ws.send(
+        JSON.stringify({ type: "tool.result", call_id: r.call_id, result: r.result }),
+      );
     }
   }
 
@@ -223,6 +309,7 @@ export class VoiceAgent {
 
   async stop() {
     this.sessionReady = false;
+    this.pendingTools = [];
     this.stopPlayback();
     this.ws?.close();
     this.ws = null;

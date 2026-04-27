@@ -41,14 +41,18 @@ browser  ◄══════ WebSocket: wss://agents.assemblyai.com/v1/voice?t
 
 The system prompt (`frontend/src/prompt.ts`) keeps the agent in interview mode — one question at a time, dig for stories, mirror the user's phrasing — instead of drafting the post itself. That's deliberate: the goal of this demo is to capture the user's voice, not to overwrite it.
 
+### Tools
+
+The agent has one tool: `search_web(query)`, backed by [Exa](https://exa.ai). When the user names a stat, study, company, or recent event, the agent can fact-check or pull a supporting figure mid-interview. Tool calls are dispatched browser → backend → Exa so the Exa key never reaches the client. The browser surfaces a small "🔍 Searching: …" line in the transcript so you can see it fire.
+
 ## Deploy on Railway
 
 Each folder has its own `railway.json`. Create two services in Railway from the same repo:
 
-| Service  | Root directory | Environment variables                                           |
-| -------- | -------------- | --------------------------------------------------------------- |
-| backend  | `backend`      | `ASSEMBLYAI_API_KEY`, `ALLOWED_ORIGINS=https://<frontend-url>`  |
-| frontend | `frontend`     | `VITE_TOKEN_URL=https://<backend-url>/api/voice-token`          |
+| Service  | Root directory | Environment variables                                                                |
+| -------- | -------------- | ------------------------------------------------------------------------------------ |
+| backend  | `backend`      | `ASSEMBLYAI_API_KEY`, `EXA_API_KEY`, `ALLOWED_ORIGINS=https://<frontend-url>`        |
+| frontend | `frontend`     | `VITE_TOKEN_URL=https://<backend-url>/api/voice-token`, `VITE_BACKEND_URL=https://<backend-url>` |
 
 Generate a public domain for each. `VITE_*` variables must be set at build time, so trigger a rebuild after setting them.
 
