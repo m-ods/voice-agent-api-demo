@@ -40,41 +40,51 @@ export default function App() {
   };
 
   return (
-    <div className="app">
-      <header>
-        <h1>LinkedIn Post Interviewer</h1>
-        <p className="subtitle">
-          Talk to the agent. It will interview you to extract a post in your own words.
-        </p>
-      </header>
-
-      <div className="controls">
-        {!running ? (
-          <button className="primary" onClick={start}>
-            Start interview
-          </button>
-        ) : (
-          <button className="secondary" onClick={stop}>
-            End interview
-          </button>
-        )}
-        <span className={`status status-${status.replace(/\s+/g, "-")}`}>{status}</span>
+    <>
+      <div className="topbar">
+        <div className="topbar-inner">
+          <span className="logo" aria-hidden>in</span>
+          <span className="topbar-title">Post Interviewer</span>
+        </div>
       </div>
 
-      {error && <div className="error">⚠ {error}</div>}
-
-      <div className="transcript">
-        {transcript.length === 0 && (
-          <div className="empty">Transcript will appear here once the conversation starts.</div>
-        )}
-        {transcript.map((item) => (
-          <div key={item.id} className={`turn turn-${item.role}`}>
-            <div className="role">{item.role === "user" ? "You" : "Interviewer"}</div>
-            <div className={`text ${item.partial ? "partial" : ""}`}>{item.text}</div>
+      <div className="app">
+        <section className="card card-header">
+          <h1>Find your next post</h1>
+          <p className="subtitle">
+            Talk to the interviewer. It draws out a story in your own words so the post sounds like you.
+          </p>
+          <div className="controls">
+            {!running ? (
+              <button className="primary" onClick={start}>
+                Start interview
+              </button>
+            ) : (
+              <button className="secondary" onClick={stop}>
+                End interview
+              </button>
+            )}
+            <span className={`status status-${status.replace(/\s+/g, "-")}`}>{status}</span>
           </div>
-        ))}
-        <div ref={transcriptEndRef} />
+        </section>
+
+        {error && <div className="error">⚠ {error}</div>}
+
+        <section className="card">
+          <div className="transcript">
+            {transcript.length === 0 && (
+              <div className="empty">Transcript will appear here once the conversation starts.</div>
+            )}
+            {transcript.map((item) => (
+              <div key={item.id} className={`turn turn-${item.role}`}>
+                <div className="role">{item.role === "user" ? "You" : "Interviewer"}</div>
+                <div className={`text ${item.partial ? "partial" : ""}`}>{item.text}</div>
+              </div>
+            ))}
+            <div ref={transcriptEndRef} />
+          </div>
+        </section>
       </div>
-    </div>
+    </>
   );
 }
