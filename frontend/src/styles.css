@@ -1,0 +1,110 @@
+:root {
+  color-scheme: light dark;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --bg: #0b0d10;
+  --panel: #15181d;
+  --border: #262b33;
+  --text: #e8eaed;
+  --muted: #8a93a6;
+  --accent: #6ea8fe;
+  --user: #2a3346;
+  --agent: #1f2a22;
+  --error: #ff6b6b;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); }
+body { min-height: 100vh; }
+
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 48px 24px 96px;
+}
+
+header h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.subtitle {
+  margin: 0 0 32px;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+button {
+  font: inherit;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: filter 0.1s;
+}
+button:hover { filter: brightness(1.15); }
+
+button.primary { background: var(--accent); color: #0b0d10; border-color: var(--accent); font-weight: 600; }
+button.secondary { background: transparent; color: var(--text); }
+
+.status {
+  font-size: 13px;
+  color: var(--muted);
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+}
+.status-listening { color: #6ee7a8; }
+.status-disconnected { color: var(--error); }
+
+.error {
+  padding: 12px 16px;
+  background: rgba(255, 107, 107, 0.08);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+  border-radius: 8px;
+  color: var(--error);
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.empty {
+  color: var(--muted);
+  font-style: italic;
+  font-size: 14px;
+  padding: 32px 0;
+  text-align: center;
+}
+
+.turn {
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  max-width: 80%;
+}
+.turn-user { background: var(--user); align-self: flex-end; }
+.turn-agent { background: var(--agent); align-self: flex-start; }
+
+.role {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.text { line-height: 1.45; font-size: 15px; }
+.text.partial { opacity: 0.65; font-style: italic; }
