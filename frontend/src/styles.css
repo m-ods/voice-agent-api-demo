@@ -250,7 +250,6 @@ button.secondary:hover {
 }
 .turn-tool .role { display: none; }
 .turn-tool .text { font-size: 12px; }
-.turn-tool .text::before { content: "🔍 "; }
 .turn-tool .text.partial { opacity: 0.6; }
 
 .role {
@@ -264,3 +263,38 @@ button.secondary:hover {
 
 .text { font-size: 14px; }
 .text.partial { opacity: 0.55; font-style: italic; }
+
+/* generated post card */
+.post-card { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand-tint), 0 2px 4px rgba(0, 0, 0, 0.04); }
+.post-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+.post-header h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.post-copy {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--brand);
+  border: 1px solid var(--brand);
+}
+.post-copy:hover { background: var(--brand-tint); }
+.post-body {
+  margin: 0;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: var(--text);
+}

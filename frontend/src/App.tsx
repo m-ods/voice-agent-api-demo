@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { VoiceAgent, type TranscriptItem } from "./voiceAgent";
+import {
+  VoiceAgent,
+  type GeneratedPost,
+  type TranscriptItem,
+} from "./voiceAgent";
 import { VOICE_GROUPS, DEFAULT_VOICE } from "./voices";
 
 const TOKEN_URL = import.meta.env.VITE_TOKEN_URL || "/api/voice-token";
@@ -10,11 +14,14 @@ export default function App() {
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
+  const [post, setPost] = useState<GeneratedPost | null>(null);
+  const [copied, setCopied] = useState(false);
   const [voice, setVoice] = useState<string>(
     () => localStorage.getItem(VOICE_STORAGE_KEY) || DEFAULT_VOICE,
   );
   const agentRef = useRef<VoiceAgent | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement | null>(null);
+  const postRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     localStorage.setItem(VOICE_STORAGE_KEY, voice);
@@ -24,13 +31,30 @@ export default function App() {
     transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [transcript]);
 
+  useEffect(() => {
+    if (post) postRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [post]);
+
+  const copyPost = async () => {
+    if (!post) return;
+    try {
+      await navigator.clipboard.writeText(post.text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // clipboard blocked — ignore
+    }
+  };
+
   const start = async () => {
     setError(null);
     setTranscript([]);
+    setPost(null);
     const agent = new VoiceAgent({
       onStatus: setStatus,
       onTranscript: setTranscript,
       onError: (m) => setError(m),
+      onPost: setPost,
     });
     agentRef.current = agent;
     try {
@@ -97,6 +121,23 @@ export default function App() {
         </section>
 
         {error && <div className="error">⚠ {error}</div>}
+
+        {post && (
+          <section className="card post-card" ref={postRef}>
+            <div className="post-header">
+              <h2>Draft post</h2>
+              <button
+                type="button"
+                className="post-copy"
+                onClick={copyPost}
+                aria-label="Copy draft to clipboard"
+              >
+                {copied ? "Copied" : "Copy"}
+              </button>
+            </div>
+            <pre className="post-body">{post.text}</pre>
+          </section>
+        )}
 
         <section className="card">
           <div className="transcript">

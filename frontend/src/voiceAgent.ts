@@ -4,17 +4,32 @@ const SAMPLE_RATE = 24000;
 const WS_URL = "wss://agents.assemblyai.com/v1/voice";
 const API_BASE = import.meta.env.VITE_BACKEND_URL || "";
 
+type ToolMeta = {
+  name: string;
+  args: Record<string, unknown>;
+  // compact human-readable summary of the result, used when feeding the
+  // transcript back into the LinkedIn-post generator
+  summary?: string;
+};
+
 type TranscriptItem = {
   id: string;
   role: "user" | "agent" | "tool";
   text: string;
   partial?: boolean;
+  tool?: ToolMeta;
+};
+
+export type GeneratedPost = {
+  text: string;
+  model?: string;
 };
 
 export type VoiceAgentEvents = {
   onStatus: (status: string) => void;
   onTranscript: (items: TranscriptItem[]) => void;
   onError: (message: string) => void;
+  onPost: (post: GeneratedPost) => void;
 };
 
 const TOOLS = [
@@ -33,6 +48,22 @@ const TOOLS = [
         },
       },
       required: ["query"],
+    },
+  },
+  {
+    type: "function",
+    name: "generate_linkedin_post",
+    description:
+      "Draft the LinkedIn post from the conversation so far. ONLY call this once you have a specific story or moment, at least one concrete detail (a number, quote, name, or visible action), and a clear takeaway. Don't call it on a vague answer. Do not announce that you're calling it; do not read the draft out loud. After it returns, simply tell the user a draft is on screen and ask if they want to tweak the angle.",
+    parameters: {
+      type: "object",
+      properties: {
+        angle: {
+          type: "string",
+          description:
+            "Optional one-sentence framing for the post — the angle you think makes it land (e.g. 'the surprise was how quickly the on-call rotation broke'). Skip if unsure.",
+        },
+      },
     },
   },
 ];
@@ -224,39 +255,109 @@ export class VoiceAgent {
     const name: string = msg.name || "";
     const args = msg.args || {};
 
+    const initialText =
+      name === "search_web"
+        ? `🔍 Searching: "${args.query ?? ""}"`
+        : name === "generate_linkedin_post"
+          ? "📝 Drafting LinkedIn post…"
+          : `Calling ${name}…`;
+
     const item: TranscriptItem = {
       id: `tool-${callId || Date.now()}`,
       role: "tool",
-      text: name === "search_web" ? `Searching: "${args.query ?? ""}"` : `Calling ${name}…`,
+      text: initialText,
       partial: true,
+      tool: { name, args },
     };
     this.transcript.push(item);
     this.events.onTranscript([...this.transcript]);
 
     let resultJson: string;
     try {
-      if (name !== "search_web") throw new Error(`unknown tool: ${name}`);
-      const resp = await fetch(`${API_BASE}/api/tool/search_web`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: args.query ?? "" }),
-      });
-      if (!resp.ok) throw new Error(`tool ${resp.status}: ${await resp.text()}`);
-      const data = await resp.json();
-      resultJson = JSON.stringify(data);
-
-      const top = (data.results || [])[0];
-      item.partial = false;
-      item.text = top
-        ? `Searched: "${args.query}" → ${top.title || top.source || "result"}`
-        : `Searched: "${args.query}" → no results`;
+      if (name === "search_web") {
+        resultJson = await this.runSearchWeb(item, args);
+      } else if (name === "generate_linkedin_post") {
+        resultJson = await this.runGeneratePost(item, args);
+      } else {
+        throw new Error(`unknown tool: ${name}`);
+      }
     } catch (err: any) {
       resultJson = JSON.stringify({ error: String(err?.message ?? err) });
       item.partial = false;
-      item.text = `Search failed: ${err?.message ?? err}`;
+      item.text = `${name} failed: ${err?.message ?? err}`;
+      if (item.tool) item.tool.summary = `error: ${err?.message ?? err}`;
     }
     this.events.onTranscript([...this.transcript]);
     return { call_id: callId, result: resultJson };
+  }
+
+  private async runSearchWeb(
+    item: TranscriptItem,
+    args: any,
+  ): Promise<string> {
+    const resp = await fetch(`${API_BASE}/api/tool/search_web`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: args.query ?? "" }),
+    });
+    if (!resp.ok) throw new Error(`tool ${resp.status}: ${await resp.text()}`);
+    const data = await resp.json();
+
+    const top = (data.results || [])[0];
+    item.partial = false;
+    item.text = top
+      ? `🔍 Searched: "${args.query}" → ${top.title || top.source || "result"}`
+      : `🔍 Searched: "${args.query}" → no results`;
+    if (item.tool) {
+      const summary = (data.results || [])
+        .slice(0, 3)
+        .map(
+          (r: any) =>
+            `${r.title || r.source || "result"}${r.snippet ? ` — ${r.snippet}` : ""}`,
+        )
+        .join(" | ");
+      item.tool.summary = `query="${args.query ?? ""}" → ${summary || "no results"}`;
+    }
+    return JSON.stringify(data);
+  }
+
+  private async runGeneratePost(
+    item: TranscriptItem,
+    args: any,
+  ): Promise<string> {
+    const turns = this.transcript
+      .filter((t) => t.id !== item.id) // exclude this in-flight tool turn
+      .map((t) => ({
+        role: t.role,
+        text:
+          t.role === "tool" ? t.tool?.summary ?? t.text : t.text,
+      }))
+      .filter((t) => t.text && t.text.trim());
+
+    const resp = await fetch(`${API_BASE}/api/tool/generate_post`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ turns, angle: args.angle ?? null }),
+    });
+    if (!resp.ok) throw new Error(`tool ${resp.status}: ${await resp.text()}`);
+    const data = await resp.json();
+    const post: string = data.post ?? "";
+
+    item.partial = false;
+    item.text = "📝 Drafted LinkedIn post";
+    if (item.tool) {
+      item.tool.summary = `generated ${post.length}-char post (model=${data.model ?? "?"})`;
+    }
+
+    this.events.onPost({ text: post, model: data.model });
+
+    // Hand the agent a short ack instead of the full post — we don't want it
+    // reading the draft aloud. The post is shown to the user on screen.
+    return JSON.stringify({
+      status: "ok",
+      message:
+        "Draft generated and shown to the user on screen. Tell them it's ready and ask if they want to tweak the angle. Do not read the draft aloud.",
+    });
   }
 
   private async flushTools() {
