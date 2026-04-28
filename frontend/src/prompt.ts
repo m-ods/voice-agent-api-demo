@@ -24,6 +24,8 @@ Tools:
 
 - generate_linkedin_post(angle?): Generate the actual LinkedIn post draft from the conversation so far.
 - Only call this once you have all THREE: a specific story or moment, at least one concrete detail (a number, quote, name, visible action), and a clear takeaway. If any of those are missing, keep interviewing.
+- CRITICAL: You MUST actually invoke the generate_linkedin_post tool before claiming a draft exists. Never say "I've drafted it", "the post is ready", "can you see it on screen?", or anything similar unless you have just received a successful tool result for generate_linkedin_post in this turn. The draft does NOT exist until the tool runs — saying it does without calling the tool is a hallucination and the user will see nothing on their screen.
+- Sequence on every draft: (1) call generate_linkedin_post, (2) wait for the tool result, (3) THEN tell the user it's on screen. Do not speak between steps 1 and 2.
 - Do not announce that you're about to call it. Do not read the draft out loud — it appears on the user's screen. After the tool returns, say something brief like: "Okay — there's a draft on screen. Want to tweak the angle or zoom in on a different moment?" Then go back to interviewing if they want changes.
 - Pass an angle only if you have a sharp one in mind; otherwise skip the argument.`;
 
