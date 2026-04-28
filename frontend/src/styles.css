@@ -298,3 +298,58 @@ button.secondary:hover {
   word-wrap: break-word;
   color: var(--text);
 }
+
+/* drafting placeholder + regenerating pill */
+.post-card-loading { padding: 28px 24px; }
+.drafting-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--brand);
+}
+.drafting-hint {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.drafting-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 10px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--brand-tint);
+  color: var(--brand);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+}
+.drafting-dots {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+}
+.drafting-dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: drafting-bounce 1.2s infinite ease-in-out;
+}
+.drafting-dots span:nth-child(2) { animation-delay: 0.2s; }
+.drafting-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes drafting-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-3px); opacity: 1; }
+}
+
+.transcript-cta {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0 4px;
+}

@@ -30,6 +30,8 @@ export type VoiceAgentEvents = {
   onTranscript: (items: TranscriptItem[]) => void;
   onError: (message: string) => void;
   onPost: (post: GeneratedPost) => void;
+  onDraftStart: () => void;
+  onDraftError: (message: string) => void;
 };
 
 const TOOLS = [
@@ -282,10 +284,12 @@ export class VoiceAgent {
         throw new Error(`unknown tool: ${name}`);
       }
     } catch (err: any) {
-      resultJson = JSON.stringify({ error: String(err?.message ?? err) });
+      const msg = err?.message ?? String(err);
+      resultJson = JSON.stringify({ error: String(msg) });
       item.partial = false;
-      item.text = `${name} failed: ${err?.message ?? err}`;
-      if (item.tool) item.tool.summary = `error: ${err?.message ?? err}`;
+      item.text = `${name} failed: ${msg}`;
+      if (item.tool) item.tool.summary = `error: ${msg}`;
+      if (name === "generate_linkedin_post") this.events.onDraftError(msg);
     }
     this.events.onTranscript([...this.transcript]);
     return { call_id: callId, result: resultJson };
@@ -365,6 +369,7 @@ export class VoiceAgent {
 
     if (turns.length === 0) throw new Error("transcript is empty");
 
+    this.events.onDraftStart();
     const resp = await fetch(`${API_BASE}/api/tool/generate_post`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

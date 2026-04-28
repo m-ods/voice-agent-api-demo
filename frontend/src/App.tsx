@@ -37,6 +37,13 @@ export default function App() {
     if (post) postRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [post]);
 
+  useEffect(() => {
+    if (drafting && !post) {
+      // Bring the loading card into view so users mid-transcript see it light up.
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [drafting, post]);
+
   const copyPost = async () => {
     if (!post) return;
     try {
@@ -52,11 +59,20 @@ export default function App() {
     setError(null);
     setTranscript([]);
     setPost(null);
+    setDrafting(false);
     const agent = new VoiceAgent({
       onStatus: setStatus,
       onTranscript: setTranscript,
       onError: (m) => setError(m),
-      onPost: setPost,
+      onPost: (p) => {
+        setPost(p);
+        setDrafting(false);
+      },
+      onDraftStart: () => setDrafting(true),
+      onDraftError: (m) => {
+        setDrafting(false);
+        setError(`Couldn't draft post — ${m}`);
+      },
     });
     agentRef.current = agent;
     try {
@@ -151,10 +167,34 @@ export default function App() {
 
         {error && <div className="error">⚠ {error}</div>}
 
+        {drafting && !post && (
+          <section className="card post-card post-card-loading" aria-live="polite">
+            <div className="drafting-status">
+              <span className="drafting-label">Generating draft</span>
+              <span className="drafting-dots" aria-hidden>
+                <span /><span /><span />
+              </span>
+            </div>
+            <p className="drafting-hint">
+              Sending the conversation to the LLM Gateway. This usually takes 5–15 seconds.
+            </p>
+          </section>
+        )}
+
         {post && (
           <section className="card post-card" ref={postRef}>
             <div className="post-header">
-              <h2>Draft post</h2>
+              <h2>
+                Draft post
+                {drafting && (
+                  <span className="drafting-pill" aria-live="polite">
+                    Regenerating
+                    <span className="drafting-dots" aria-hidden>
+                      <span /><span /><span />
+                    </span>
+                  </span>
+                )}
+              </h2>
               <button
                 type="button"
                 className="post-copy"
@@ -183,6 +223,13 @@ export default function App() {
                 <div className={`text ${item.partial ? "partial" : ""}`}>{item.text}</div>
               </div>
             ))}
+            {running && userTurnCount > 0 && !drafting && !post && (
+              <div className="transcript-cta">
+                <button className="primary" onClick={draftNow}>
+                  Ready? Draft post
+                </button>
+              </div>
+            )}
             <div ref={transcriptEndRef} />
           </div>
         </section>
