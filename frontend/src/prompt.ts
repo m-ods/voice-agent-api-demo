@@ -30,4 +30,4 @@ Tools:
 - Pass an angle only if you have a sharp one in mind; otherwise skip the argument.`;
 
 export const GREETING =
-  "Hey, I'm here to help you find a good LinkedIn post hiding in your week. What's been on your mind?";
+  "Hey! Tell me about something from your week — a project you shipped, a meeting that surprised you, a problem you got stuck on. We'll find a post in there.";

@@ -325,31 +325,16 @@ export class VoiceAgent {
     item: TranscriptItem,
     args: any,
   ): Promise<string> {
-    const turns = this.transcript
-      .filter((t) => t.id !== item.id) // exclude this in-flight tool turn
-      .map((t) => ({
-        role: t.role,
-        text:
-          t.role === "tool" ? t.tool?.summary ?? t.text : t.text,
-      }))
-      .filter((t) => t.text && t.text.trim());
-
-    const resp = await fetch(`${API_BASE}/api/tool/generate_post`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ turns, angle: args.angle ?? null }),
+    const post = await this.callGeneratePost({
+      angle: args.angle ?? null,
+      excludeId: item.id,
     });
-    if (!resp.ok) throw new Error(`tool ${resp.status}: ${await resp.text()}`);
-    const data = await resp.json();
-    const post: string = data.post ?? "";
 
     item.partial = false;
     item.text = "📝 Drafted LinkedIn post";
     if (item.tool) {
-      item.tool.summary = `generated ${post.length}-char post (model=${data.model ?? "?"})`;
+      item.tool.summary = `generated ${post.text.length}-char post (model=${post.model ?? "?"})`;
     }
-
-    this.events.onPost({ text: post, model: data.model });
 
     // Hand the agent a short ack instead of the full post — we don't want it
     // reading the draft aloud. The post is shown to the user on screen.
@@ -358,6 +343,39 @@ export class VoiceAgent {
       message:
         "Draft generated and shown to the user on screen. Tell them it's ready and ask if they want to tweak the angle. Do not read the draft aloud.",
     });
+  }
+
+  // Manual draft path — invoked from the UI button, bypassing the agent.
+  // Throws on failure; caller is responsible for surfacing errors.
+  async generatePost(angle?: string): Promise<GeneratedPost> {
+    return this.callGeneratePost({ angle: angle ?? null });
+  }
+
+  private async callGeneratePost(opts: {
+    angle: string | null;
+    excludeId?: string;
+  }): Promise<GeneratedPost> {
+    const turns = this.transcript
+      .filter((t) => !opts.excludeId || t.id !== opts.excludeId)
+      .map((t) => ({
+        role: t.role,
+        text: t.role === "tool" ? t.tool?.summary ?? t.text : t.text,
+      }))
+      .filter((t) => t.text && t.text.trim());
+
+    if (turns.length === 0) throw new Error("transcript is empty");
+
+    const resp = await fetch(`${API_BASE}/api/tool/generate_post`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ turns, angle: opts.angle }),
+    });
+    if (!resp.ok) throw new Error(`${resp.status}: ${await resp.text()}`);
+    const data = await resp.json();
+
+    const post: GeneratedPost = { text: data.post ?? "", model: data.model };
+    this.events.onPost(post);
+    return post;
   }
 
   private async flushTools() {

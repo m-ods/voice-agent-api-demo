@@ -16,6 +16,8 @@ export default function App() {
   const [running, setRunning] = useState(false);
   const [post, setPost] = useState<GeneratedPost | null>(null);
   const [copied, setCopied] = useState(false);
+  const [drafting, setDrafting] = useState(false);
+  const userTurnCount = transcript.filter((t) => t.role === "user").length;
   const [voice, setVoice] = useState<string>(
     () => localStorage.getItem(VOICE_STORAGE_KEY) || DEFAULT_VOICE,
   );
@@ -72,29 +74,56 @@ export default function App() {
     setRunning(false);
   };
 
+  const draftNow = async () => {
+    if (!agentRef.current || drafting) return;
+    setError(null);
+    setDrafting(true);
+    try {
+      await agentRef.current.generatePost();
+    } catch (e: any) {
+      setError(`Couldn't draft post — ${e?.message ?? String(e)}`);
+    } finally {
+      setDrafting(false);
+    }
+  };
+
   return (
     <>
       <div className="topbar">
         <div className="topbar-inner">
           <span className="logo" aria-hidden>in</span>
-          <span className="topbar-title">Post Interviewer</span>
+          <span className="topbar-title">LinkedIn Post Brainstormer</span>
         </div>
       </div>
 
       <div className="app">
         <section className="card card-header">
-          <h1>Find your next post</h1>
+          <h1>Brainstorm your next LinkedIn post</h1>
           <p className="subtitle">
-            Talk to the interviewer. It draws out a story in your own words so the post sounds like you.
+            Hit start, then talk for a couple of minutes about something from your week — a project, a meeting, a moment that surprised you. The voice agent asks questions to dig out the story, then drafts a post in your voice. Hit <em>Draft post</em> any time you're ready.
           </p>
           <div className="controls">
             {!running ? (
               <button className="primary" onClick={start}>
-                Start interview
+                Start
               </button>
             ) : (
               <button className="secondary" onClick={stop}>
-                End interview
+                End conversation
+              </button>
+            )}
+            {running && (
+              <button
+                className="primary"
+                onClick={draftNow}
+                disabled={drafting || userTurnCount === 0}
+                title={
+                  userTurnCount === 0
+                    ? "Talk a bit first, then draft"
+                    : "Draft a post from the conversation so far"
+                }
+              >
+                {drafting ? "Drafting…" : post ? "Redraft post" : "Draft post"}
               </button>
             )}
             <label className="voice-picker">
@@ -142,7 +171,11 @@ export default function App() {
         <section className="card">
           <div className="transcript">
             {transcript.length === 0 && (
-              <div className="empty">Transcript will appear here once the conversation starts.</div>
+              <div className="empty">
+                {running
+                  ? "Listening — say what's been on your mind."
+                  : "Transcript will appear here once the conversation starts."}
+              </div>
             )}
             {transcript.map((item) => (
               <div key={item.id} className={`turn turn-${item.role}`}>
