@@ -7,52 +7,60 @@ export const VOICE_GROUPS: VoiceGroup[] = [
   {
     label: "Recommended for interviews",
     voices: [
-      { id: "dawn", label: "Dawn — professional, deliberate (US)" },
-      { id: "josh", label: "Josh — conversational, professional (US)" },
-      { id: "claire", label: "Claire — lively, conversational (US)" },
-      { id: "summer", label: "Summer — empathetic, aesthetic (US)" },
-      { id: "michael", label: "Michael — deep, calming (US)" },
-      { id: "will", label: "Will — narrative (UK)" },
+      { id: "ivy", label: "Ivy — professional, deliberate (US)" },
+      { id: "james", label: "James — conversational, professional (US)" },
+      { id: "emma", label: "Emma — lively, young (US)" },
+      { id: "autumn", label: "Autumn — empathetic, conversational (US)" },
+      { id: "david", label: "David — deep, calming (US)" },
+      { id: "oliver", label: "Oliver — narrative (UK)" },
     ],
   },
   {
     label: "More English voices",
     voices: [
-      { id: "andy", label: "Andy — soft, young (US)" },
-      { id: "zoe", label: "Zoe — smooth, young (US)" },
-      { id: "alexis", label: "Alexis — high-pitched, chatty (US)" },
-      { id: "pete", label: "Pete — direct, fast-paced (US)" },
-      { id: "brian", label: "Brian — chatty, expressive (US)" },
-      { id: "diana", label: "Diana — older, calming (US)" },
-      { id: "grace", label: "Grace — Southern, warm (US)" },
-      { id: "kai", label: "Kai — slow, ASMR (US)" },
-      { id: "nathan", label: "Nathan — deep, older (US)" },
-      { id: "audrey", label: "Audrey — older, calming (US)" },
-      { id: "dylan", label: "Dylan — theatrical, energetic (US)" },
-      { id: "melissa", label: "Melissa — clear, instructive (UK)" },
+      { id: "tyler", label: "Tyler — theatrical, energetic (US)" },
+      { id: "sam", label: "Sam — soft, young (US)" },
+      { id: "mia", label: "Mia — smooth, young (US)" },
+      { id: "bella", label: "Bella — high-pitched, chatty (US)" },
+      { id: "jack", label: "Jack — direct, fast-paced (US)" },
+      { id: "kyle", label: "Kyle — chatty, expressive (US)" },
+      { id: "helen", label: "Helen — older, calming (US)" },
+      { id: "martha", label: "Martha — Southern, warm (US)" },
+      { id: "river", label: "River — slow, ASMR (US)" },
+      { id: "victor", label: "Victor — deep, older (US)" },
+      { id: "eleanor", label: "Eleanor — older, calming (US)" },
+      { id: "sophie", label: "Sophie — clear, instructive (UK)" },
     ],
   },
   {
     label: "Multilingual",
     voices: [
-      { id: "gautam", label: "Gautam — Hindi/English" },
-      { id: "luke", label: "Luke — Mandarin/English" },
-      { id: "lily", label: "Lily — Mandarin/English" },
-      { id: "alexei", label: "Alexei — Russian/English" },
-      { id: "max", label: "Max — German/English" },
-      { id: "anna", label: "Anna — German/English" },
-      { id: "antoine", label: "Antoine — French/English" },
-      { id: "jennie", label: "Jennie — Korean/English" },
-      { id: "kevin", label: "Kevin — Korean/English" },
-      { id: "kenji", label: "Kenji — Japanese/English" },
-      { id: "yuki", label: "Yuki — Japanese/English" },
-      { id: "nova", label: "Nova — Italian/English" },
-      { id: "marco", label: "Marco — Italian/English" },
-      { id: "sofia", label: "Sofia — Spanish/English" },
-      { id: "santiago", label: "Santiago — Spanish/English" },
-      { id: "leo", label: "Leo — Spanish (LatAm)/English" },
+      { id: "arjun", label: "Arjun — Hindi/English" },
+      { id: "ethan", label: "Ethan — Mandarin/English" },
+      { id: "mei", label: "Mei — Mandarin/English" },
+      { id: "dmitri", label: "Dmitri — Russian/English" },
+      { id: "lukas", label: "Lukas — German/English" },
+      { id: "lena", label: "Lena — German/English" },
+      { id: "pierre", label: "Pierre — French/English" },
+      { id: "mina", label: "Mina — Korean/English" },
+      { id: "joon", label: "Joon — Korean/English" },
+      { id: "ren", label: "Ren — Japanese/English" },
+      { id: "hana", label: "Hana — Japanese/English" },
+      { id: "giulia", label: "Giulia — Italian/English" },
+      { id: "luca", label: "Luca — Italian/English" },
+      { id: "lucia", label: "Lucia — Spanish/English" },
+      { id: "mateo", label: "Mateo — Spanish/English" },
+      { id: "diego", label: "Diego — Spanish (LatAm)/English" },
     ],
   },
 ];
 
-export const DEFAULT_VOICE = "dawn";
+export const DEFAULT_VOICE = "ivy";
+
+const VOICE_IDS = new Set(VOICE_GROUPS.flatMap((g) => g.voices.map((v) => v.id)));
+
+// Voice IDs change occasionally on the server — fall back to the default if the
+// stored choice is no longer valid so we don't fail the session.
+export function resolveVoice(id: string | null | undefined): string {
+  return id && VOICE_IDS.has(id) ? id : DEFAULT_VOICE;
+}

@@ -4,7 +4,7 @@ import {
   type GeneratedPost,
   type TranscriptItem,
 } from "./voiceAgent";
-import { VOICE_GROUPS, DEFAULT_VOICE } from "./voices";
+import { VOICE_GROUPS, resolveVoice } from "./voices";
 
 const TOKEN_URL = import.meta.env.VITE_TOKEN_URL || "/api/voice-token";
 const VOICE_STORAGE_KEY = "voice-agent-demo:voice";
@@ -18,8 +18,8 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const [drafting, setDrafting] = useState(false);
   const userTurnCount = transcript.filter((t) => t.role === "user").length;
-  const [voice, setVoice] = useState<string>(
-    () => localStorage.getItem(VOICE_STORAGE_KEY) || DEFAULT_VOICE,
+  const [voice, setVoice] = useState<string>(() =>
+    resolveVoice(localStorage.getItem(VOICE_STORAGE_KEY)),
   );
   const agentRef = useRef<VoiceAgent | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement | null>(null);

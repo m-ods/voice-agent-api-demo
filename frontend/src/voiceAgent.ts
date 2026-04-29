@@ -101,7 +101,7 @@ export class VoiceAgent {
 
   constructor(private events: VoiceAgentEvents) {}
 
-  async start(tokenUrl: string, voice: string = "dawn") {
+  async start(tokenUrl: string, voice: string = "ivy") {
     this.events.onStatus("requesting token...");
     const tokenResp = await fetch(tokenUrl);
     if (!tokenResp.ok) {
